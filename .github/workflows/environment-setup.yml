@@ -2,6 +2,10 @@ name: Environment Setup
 
 on:
   workflow_call:
+    inputs:
+      override:
+        description: 'Override environment name output'
+        required: false
     outputs: 
       name: 
         description: 'Environment'
@@ -20,7 +24,9 @@ jobs:
     steps:
       - name: Define environment and prefixes from branch name
         id: get-environment
+        env:
+          override: ${{ inputs.override }}
         run: |
           environment=$([[ ${GITHUB_REF##*/} == "master" || ${GITHUB_REF##*/} == "main" ]] && echo "prod" || echo ${GITHUB_REF##*/})
-          echo "::set-output name=name::$environment"
+          echo "::set-output name=name::$(([[ $override != "" ]] && echo $override) || echo $environment)"
           echo "::set-output name=bump::$(([[ $environment == "prod" ]] && echo "minor") || echo "patch")"
