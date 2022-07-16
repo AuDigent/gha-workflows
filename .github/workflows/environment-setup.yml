@@ -1,0 +1,26 @@
+name: Environment Setup
+
+on:
+  workflow_call:
+    outputs: 
+      name: 
+        description: 'Environment'
+        value: ${{ jobs.setup.outputs.name }}
+      bump: 
+        description: 'Which type of version bump to use'
+        value: ${{ jobs.setup.outputs.bump }}
+
+jobs:
+  setup:
+    name: Setup Environment
+    runs-on: ubuntu-20.04
+    outputs:
+      name: ${{ steps.get-environment.outputs.name }}
+      bump: ${{ steps.get-environment.outputs.bump }}
+    steps:
+      - name: Define environment and prefixes from branch name
+        id: get-environment
+        run: |
+          environment=$([[ ${GITHUB_REF##*/} == "master" || ${GITHUB_REF##*/} == "main" ]] && echo "prod" || echo ${GITHUB_REF##*/})
+          echo "::set-output name=name::$environment"
+          echo "::set-output name=bump::$(([[ $environment == "prod" ]] && echo "minor") || echo "patch")"

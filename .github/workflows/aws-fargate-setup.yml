@@ -1,0 +1,64 @@
+name: AWS ECS Fargate Service Setup
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Environment of the fargate service'
+        required: true
+        type: string
+      owner:
+        description: 'Owner of the fargate service'
+        required: true
+        type: string
+      service:
+        description: 'Name of the fargate service'
+        required: true
+        type: string
+      aws_region:
+        description: 'AWS region'
+        default: 'us-west-2'
+        required: false
+        type: string
+    outputs: 
+      repository_name: 
+        description: 'ECR repository name the task definition points to'
+        value: ${{ jobs.variables.outputs.repository_name }}
+      repository_url: 
+        description: 'ECR repository name the task definition points to'
+        value: ${{ jobs.variables.outputs.repository_url }}
+      port: 
+        description: 'Port the task definition expects the service to run on'
+        value: ${{ jobs.variables.outputs.port }}
+
+jobs:
+  variables:
+    name: Get AWS ECS Fargate Service Stored Values
+    runs-on: ubuntu-20.04
+    outputs:
+      port: ${{ steps.aws-variables.outputs.port }}
+      repository_name: ${{ steps.aws-variables.outputs.repository_name }}
+      repository_url: ${{ steps.aws-variables.outputs.repository_url }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1.6.1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws_region }}
+          mask-aws-account-id: false
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1.4.0
+
+      - name: Get and Output Fargate Variables
+        id: aws-variables
+        env:
+          prefix: /${{ inputs.environment }}/${{ inputs.owner }}/${{ inputs.service }}
+          registry: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          echo "::set-output name=port::$(aws ssm get-parameter --name "$prefix/app_port" --query Parameter.Value --output text)"
+          repository_name=$(aws ssm get-parameter --name "$prefix/repository_name" --query Parameter.Value --output text)
+          echo "::set-output name=repository_name::$repository_name"
+          echo "::set-output name=repository_url::$registry/$repository_name"

@@ -1,0 +1,69 @@
+name: AWS RDS Setup
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Environment of the fargate service'
+        required: true
+        type: string
+      owner:
+        description: 'Owner of the fargate service'
+        required: true
+        type: string
+      service:
+        description: 'Name of the fargate service'
+        required: true
+        type: string
+      aws_region:
+        description: 'AWS region'
+        default: 'us-west-2'
+        required: false
+        type: string
+    outputs: 
+      endpoint: 
+        description: 'RDS cluster endpoint'
+        value: ${{ jobs.variables.outputs.endpoint }}
+      username: 
+        description: 'RDS database username'
+        value: ${{ jobs.variables.outputs.username }}
+      password: 
+        description: 'RDS database password'
+        value: ${{ jobs.variables.outputs.password }}
+      database: 
+        description: 'RDS database name'
+        value: ${{ jobs.variables.outputs.database }}
+
+jobs:
+  variables:
+    name: Get AWS RDS Stored Values
+    runs-on: ubuntu-20.04
+    outputs:
+      endpoint: ${{ steps.aws-variables.outputs.endpoint }}
+      username: ${{ steps.credentials.outputs.username }}
+      password: ${{ steps.credentials.outputs.password }}
+      database: ${{ steps.credentials.outputs.database }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1.6.1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws_region }}
+          mask-aws-account-id: false
+
+      - name: Get and Output Fargate Parameters
+        id: aws-variables
+        env:
+          prefix: /${{ inputs.environment }}/${{ inputs.owner }}/${{ inputs.service }}
+        run: |
+          echo "::set-output name=endpoint::$(aws ssm get-parameter --name "$prefix/db_endpoint" --query Parameter.Value --output text)"
+          echo "::set-output name=credentials::$(aws secretsmanager get-secret-value --secret-id $prefix/rds --query SecretString --output text)"
+
+      - name: Parse RDS credentials
+        id: credentials
+        env: ${{ fromJson(steps.aws-variables.outputs.credentials) }}
+        run: |
+          echo "::set-output name=username::$(echo $username)"
+          echo "::set-output name=password::$(echo $password)"
+          echo "::set-output name=database::$(echo $database)"
