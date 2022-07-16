@@ -1,0 +1,40 @@
+name: AWS Systems Manager Get Parameter
+
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: 'Name of the parameter'
+        required: true
+        type: string
+      aws_region:
+        description: 'AWS region'
+        default: 'us-west-2'
+        required: false
+        type: string
+    outputs: 
+      value: 
+        description: 'Value of the parameter'
+        value: ${{ jobs.get-value.outputs.value }}
+
+jobs:
+  get-value:
+    name: Get Parameter From AWS Systems Manager Parameter Store
+    runs-on: ubuntu-20.04
+    outputs:
+      value: ${{ steps.get-value.outputs.value }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1.6.1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws_region }}
+          mask-aws-account-id: false
+
+      - name: Get and Output Parameter Value
+        id: get-value
+        env:
+          name: ${{ inputs.name }}
+        run: |
+          echo "::set-output name=value::$(aws ssm get-parameter --name $name --query Parameter.Value --output text)"
