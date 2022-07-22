@@ -37,6 +37,7 @@ jobs:
     runs-on: ubuntu-20.04
     outputs:
       port: ${{ steps.aws-variables.outputs.port }}
+      service_url: ${{ steps.aws-variables.outputs.service_url }}
       repository_name: ${{ steps.aws-variables.outputs.repository_name }}
       repository_url: ${{ steps.aws-variables.outputs.repository_url }}
     steps:
@@ -59,6 +60,7 @@ jobs:
           registry: ${{ steps.login-ecr.outputs.registry }}
         run: |
           echo "::set-output name=port::$(aws ssm get-parameter --name "$prefix/app_port" --query Parameter.Value --output text)"
+          echo "::set-output name=service_url::$(aws ssm get-parameter --name "$prefix/service_url" --query Parameter.Value --output text)"
           repository_name=$(aws ssm get-parameter --name "$prefix/repository_name" --query Parameter.Value --output text)
           echo "::set-output name=repository_name::$repository_name"
           echo "::set-output name=repository_url::$registry/$repository_name"
