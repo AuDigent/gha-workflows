@@ -27,6 +27,9 @@ on:
       repository_url: 
         description: 'ECR repository name the task definition points to'
         value: ${{ jobs.variables.outputs.repository_url }}
+      service_url: 
+        description: 'URL of the load balancer pointing to the service'
+        value: ${{ jobs.variables.outputs.service_url }}
       port: 
         description: 'Port the task definition expects the service to run on'
         value: ${{ jobs.variables.outputs.port }}
