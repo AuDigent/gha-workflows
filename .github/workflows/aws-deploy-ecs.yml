@@ -1,0 +1,100 @@
+name: Deploy to ECS
+on:
+  workflow_call:
+    inputs:
+      ecr-repository-name:
+        description: Name of the AWS ECR repository
+        required: true
+        type: string
+      docker-image-tag:
+        description: image tag pushed to the AWS ECR repository
+        required: true
+        type: string
+      ecs-cluster:
+        description: Name of the ECS cluster where the service is deployed
+        required: true
+        type: string
+      ecs-service:
+        description: Name of the ECS Service
+        required: true
+        type: string
+      container-name:
+        description: name of the container in the container definitions that will be updated
+        required: true
+        type: string
+      container-definitions-path:
+        description: path of the container definitions json file
+        default: .aws/container-definitions.json
+        type: string
+      environment:
+        description: Github Environment
+        required: true
+        type: string
+      aws-region:
+        description: AWS Region of the registry
+        default: us-west-2
+        required: false
+        type: string
+      docker-build-platforms:
+        description: List of target platforms for build
+        default: "linux/amd64"
+        required: false
+        type: string
+      docker-build-context:
+        description: Context used during docker build
+        default: "."
+        required: false
+        type: string
+      docker-build-args:
+        description: "List of arguments used during docker build: ARG=VALUE"
+        default: ""
+        required: false
+        type: string
+      dockerfile-path:
+        description: path of the Dockerfile
+        default: "Dockerfile"
+        required: false
+        type: string
+      wait-for-service-stability:
+        description: do the workflow need to check and wait for service stability?
+        required: false
+        type: boolean
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        description: AWS Access Key ID used to login to the Registry
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        description: AWS Secret Access Key used to login to the Registry
+        required: true
+
+jobs:
+  deploy-to-ecs:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Push Image to ECR
+        id: ecr
+        uses: ./.github/actions/build-and-push-to-ecr
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws-region }}
+          docker-build-context:  ${{ inputs.docker-build-context }}
+          dockerfile-path: ${{ inputs.dockerfile-path }}
+          docker-image-tag: ${{ inputs.docker-image-tag }}
+          docker-build-args: ${{ inputs.docker-build-args }}
+          ecr-repository-name: ${{ inputs.ecr-repository-name }}
+      - name: Deploy to ECS
+        uses: ./.github/actions/deploy-to-ecs
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws-region }}
+          ecs-cluster: ${{ inputs.ecs-cluster }}
+          ecs-service: ${{ inputs.ecs-service }}
+          docker-image: ${{ steps.ecr.outputs.image }}
+          container-definitions-path: ${{ inputs.container-definitions-path }}
+          container-name: ${{ inputs.container-name }}
+          wait-for-service-stability: ${{ inputs.wait-for-service-stability }}
