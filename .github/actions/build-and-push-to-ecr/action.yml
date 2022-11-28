@@ -1,0 +1,76 @@
+name: Build and Push to ECR
+description: Build and push image to ECR
+inputs:
+  ecr-repository-name:
+    description: Name of the AWS ECR repository
+    required: true
+    type: string
+  docker-image-tag:
+    description: image tag pushed to the AWS ECR repository
+    required: true
+    type: string
+  aws-access-key-id:
+    description: AWS access key to login to ECR
+    required: true
+    type: string
+  aws-secret-access-key:
+    description: AWS secret access key to login to ECR
+    required: true
+    type: string
+  aws-region:
+    description: AWS Region of the registry
+    default: us-west-2
+    required: false
+    type: string
+  docker-build-platforms:
+    description: List of target platforms for build
+    default: "linux/amd64"
+    required: false
+    type: string
+  docker-build-context:
+    description: Context used during docker build
+    default: "."
+    required: false
+    type: string
+  docker-build-args:
+    description: "List of arguments used during docker build: ARG=VALUE"
+    default: ""
+    required: false
+    type: string
+  dockerfile-path:
+    description: path of the Dockerfile
+    default: "Dockerfile"
+    required: false
+    type: string
+outputs:
+  image:
+    description: image push to ECR
+    value: ${{ steps.login-ecr.outputs.registry }}/${{ inputs.ecr-repository-name }}:${{ inputs.docker-image-tag }}
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: ${{ inputs.aws-region }}
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    - name: Build and push image
+      id: build-and-push
+      uses: docker/build-push-action@v3
+      with:
+        context: ${{ inputs.docker-build-context }}
+        file: ${{ inputs.dockerfile-path }}
+        platforms: ${{ inputs.docker-build-platforms }}
+        push: true
+        tags: ${{ steps.login-ecr.outputs.registry }}/${{ inputs.ecr-repository-name }}:${{ inputs.docker-image-tag }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: ${{ inputs.docker-build-args }}
