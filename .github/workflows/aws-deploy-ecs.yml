@@ -1,0 +1,135 @@
+name: Deploy to ECS
+on:
+  workflow_call:
+    inputs:
+      ecr-repository-name:
+        description: Name of the AWS ECR repository
+        required: true
+        type: string
+      docker-image-tag:
+        description: image tag pushed to the AWS ECR repository
+        required: true
+        type: string
+      ecs-cluster:
+        description: Name of the ECS cluster where the service is deployed
+        required: true
+        type: string
+      ecs-service:
+        description: Name of the ECS Servivce
+        required: true
+        type: string
+      container-name:
+        description: name of the container in the container definitions that will be updated
+        required: true
+        type: string
+      container-definitions-path:
+        description: path of the container definitions json file
+        default: .aws/container-definitions.json
+        type: string
+      environment:
+        description: Github Environment
+        required: true
+        type: string
+      aws-region:
+        description: AWS Region of the registry
+        default: us-east-1
+        required: false
+        type: string
+      docker-build-platforms:
+        description: List of target platforms for build
+        default: "linux/amd64"
+        required: false
+        type: string
+      docker-build-context:
+        description: Context used during docker build
+        default: "."
+        required: false
+        type: string
+      docker-build-args:
+        description: "List of arguments used during docker build: ARG=VALUE"
+        default: ""
+        required: false
+        type: string
+      dockerfile-path:
+        description: path of the Dockerfile
+        default: "Dockerfile"
+        required: false
+        type: string
+      wait-for-service-stability:
+        description: do the workflow need to check and wait for service stability?
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        description: AWS Access Key ID used to login to the Registry
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        description: AWS Secret Access Key used to login to the Registry
+        required: true
+
+jobs:
+  deploy-to-ecs:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws-region }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Build and push image
+        id: build-and-push
+        uses: docker/build-push-action@v3
+        with:
+          context: ${{ inputs.docker-build-context }}
+          file: ${{ inputs.dockerfile-path }}
+          platforms: ${{ inputs.docker-build-platforms }}
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ inputs.ecr-repository-name }}:${{ inputs.docker-image-tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: ${{ inputs.docker-build-args }}
+      - name: Get Task Definition
+        id: task-definition
+        run: |
+          # Get the Task Definition ARN currently used by the ECS service
+          TASK_DEFINITION_ARN=$(aws ecs describe-services \
+            --cluster "${{ inputs.ecs-cluster }}" \
+            --services "${{ inputs.ecs-service }}" \
+            --output json \
+            | jq -r '.services[0].taskDefinition')
+          echo "::debug::${TASK_DEFINITION_ARN}"
+          
+          # Get the Container Definitions defined in your repo and update the image with the one pushed in ECR in the previous step
+          CONTAINER_DEFINITIONS=$( cat "${{ inputs.container-definitions-path }}" \
+            | jq -c '(.[] | select(.name == "${{ inputs.container-name }}") | .image) |= "${{ steps.login-ecr.outputs.registry }}/${{ inputs.ecr-repository-name }}:${{ inputs.docker-image-tag }}"')
+          echo "::debug::${CONTAINER_DEFINITIONS}"
+
+          # Get the full content of this Task Definition and update the container defininitions
+          TASK_DEFINITION=$(aws ecs describe-task-definition \
+            --task-definition "${TASK_DEFINITION_ARN}" \
+            --output json \
+            | jq ".taskDefinition.containerDefinitions |= ${CONTAINER_DEFINITIONS}" \
+            | jq '.taskDefinition')
+          echo "::debug::${TASK_DEFINITION}"
+          
+          echo "${TASK_DEFINITION}" > /tmp/task-definition.json
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: /tmp/task-definition.json
+          service: ${{ inputs.ecs-service }}
+          cluster: ${{ inputs.ecs-cluster }}
+          wait-for-service-stability: ${{ inputs.wait-for-service-stability }}
