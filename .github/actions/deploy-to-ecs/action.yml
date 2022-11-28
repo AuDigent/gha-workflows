@@ -10,7 +10,7 @@ inputs:
     required: true
     type: string
   ecs-service:
-    description: Name of the ECS Servivce
+    description: Name of the ECS Service
     required: true
     type: string
   container-name:
@@ -64,7 +64,7 @@ runs:
           | jq -c '(.[] | select(.name == "${{ inputs.container-name }}") | .image) |= "${{ inputs.docker-image }}"')
         echo "::debug::${CONTAINER_DEFINITIONS}"
 
-        # Get the full content of this Task Definition and update the container defininitions
+        # Get the full content of this Task Definition and update the container definitions
         TASK_DEFINITION=$(aws ecs describe-task-definition \
           --task-definition "${TASK_DEFINITION_ARN}" \
           --output json \

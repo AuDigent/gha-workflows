@@ -15,7 +15,7 @@ on:
         required: true
         type: string
       ecs-service:
-        description: Name of the ECS Servivce
+        description: Name of the ECS Service
         required: true
         type: string
       container-name:
