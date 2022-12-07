@@ -15,7 +15,7 @@ on:
 
 jobs:
   try-workflow:
-    uses: AuDigent/gha-workflows/.github/workflows/aws-deploy-ecs.yml@0.2.0
+    uses: AuDigent/gha-workflows/.github/workflows/aws-deploy-ecs.yml@0.2.1
     with:
       ecr-repository-name: your-repo
       docker-image-tag: ${{ github.sha }}
@@ -34,7 +34,7 @@ jobs:
 ```yaml
 - uses: actions/checkout@v3
 - name: Push Image to ECR
-  uses: AuDigent/gha-workflows/.github/actions/build-and-push-to-ecr@0.2.0
+  uses: AuDigent/gha-workflows/.github/actions/build-and-push-to-ecr@0.2.1
   with:
     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -47,7 +47,7 @@ jobs:
 ```yaml
 - uses: actions/checkout@v3
 - name: Deploy to ECS
-  uses: AuDigent/gha-workflows/.github/actions/deploy-to-ecs@0.2.0
+  uses: AuDigent/gha-workflows/.github/actions/deploy-to-ecs@0.2.1
   with:
     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

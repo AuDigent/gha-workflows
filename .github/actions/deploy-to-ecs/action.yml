@@ -69,7 +69,8 @@ runs:
           --task-definition "${TASK_DEFINITION_ARN}" \
           --output json \
           | jq ".taskDefinition.containerDefinitions |= ${CONTAINER_DEFINITIONS}" \
-          | jq '.taskDefinition')
+          | jq '.taskDefinition' \
+          | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
         echo "::debug::${TASK_DEFINITION}"
         
         echo "${TASK_DEFINITION}" > /tmp/task-definition.json
