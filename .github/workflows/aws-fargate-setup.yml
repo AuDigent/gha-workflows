@@ -45,7 +45,7 @@ jobs:
       repository_url: ${{ steps.aws-variables.outputs.repository_url }}
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1.6.1
+        uses: aws-actions/configure-aws-credentials@v1-node16
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -54,7 +54,7 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1.4.0
+        uses: aws-actions/amazon-ecr-login@v1
 
       - name: Get and Output Fargate Variables
         id: aws-variables
