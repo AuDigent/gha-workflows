@@ -57,13 +57,13 @@ jobs:
         env:
           prefix: /${{ inputs.environment }}/${{ inputs.owner }}/${{ inputs.service }}
         run: |
-          echo "::set-output name=endpoint::$(aws ssm get-parameter --name "$prefix/db_endpoint" --query Parameter.Value --output text)"
-          echo "::set-output name=credentials::$(aws secretsmanager get-secret-value --secret-id $prefix/rds --query SecretString --output text)"
+          echo "endpoint=$(aws ssm get-parameter --name "$prefix/db_endpoint" --query Parameter.Value --output text)" >> $GITHUB_OUTPUT
+          echo "credentials=$(aws secretsmanager get-secret-value --secret-id $prefix/rds --query SecretString --output text)" >> $GITHUB_OUTPUT
 
       - name: Parse RDS credentials
         id: credentials
         env: ${{ fromJson(steps.aws-variables.outputs.credentials) }}
         run: |
-          echo "::set-output name=username::$(echo $username)"
-          echo "::set-output name=password::$(echo $password)"
-          echo "::set-output name=database::$(echo $database)"
+          echo "username=$(echo $username)" >> $GITHUB_OUTPUT
+          echo "password=$(echo $password)" >> $GITHUB_OUTPUT
+          echo "database=$(echo $database)" >> $GITHUB_OUTPUT
