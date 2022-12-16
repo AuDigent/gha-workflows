@@ -1,0 +1,55 @@
+name: Get CodeArtifact Token
+description: Get a CodeArtifact Token to login into CodeArtifact repositories
+inputs:
+  domain:
+    description: CodeArtifact Domain of your repositories
+    required: true
+    type: string
+  domain-owner:
+    description: CodeArtifact Domain Owner (AWS Account ID)
+    required: true
+    type: string
+  token-duration:
+    description: CodeArtifact Token duration (in seconds)
+    required: false
+    default: 3600
+    type: number
+  aws-access-key-id:
+    description: AWS ACCESS KEY ID
+    required: true
+    type: string
+  aws-secret-access-key:
+    description: AWS SECRET ACCESS KEY
+    required: true
+    type: string
+  aws-region:
+    description: AWS Region
+    default: us-west-2
+    required: false
+    type: string
+outputs:
+  token:
+    description: Code Artifact Token
+    value: ${{ steps.token.outputs.value }}
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: ${{ inputs.aws-region }}
+    - name: Get Token
+      id: token
+      shell: bash
+      run: |
+        TOKEN=$(
+          aws codeartifact get-authorization-token \
+            --domain ${{ inputs.domain }} \
+            --domain-owner ${{ inputs.domain-owner }} \
+            --region ${{ inputs.aws-region }} \
+            --query authorizationToken \
+            --duration-seconds ${{ inputs.token-duration }} \
+            --output text)
+        echo "value=${TOKEN}" >> $GITHUB_OUTPUT

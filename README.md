@@ -28,7 +28,7 @@ jobs:
     secrets: inherit
 ```
 
-### Actions
+### Actions
 
 - `build-and-push-to-ecr`:
 ```yaml
@@ -57,3 +57,39 @@ jobs:
     docker-image: myregistry/myimage:tag
     container-name: my_container
 ```
+
+- `get-codeartifact-token`:
+```yaml
+- uses: actions/checkout@v3
+- name: Get CodeArtifact Token
+  id: token
+  uses: AuDigent/gha-workflows/.github/actions/get-codeartifact-token@0.4.0
+  with:
+    domain: my-domain
+    domain-owner: 1111111   # Your AWS Account ID
+    aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+- uses: actions/setup-python@v4
+  with:
+    python-version: '3.9'
+    cache: 'pipenv'
+- name: install dependencies
+  env:
+    CODEARTIFACT_AUTH_TOKEN: ${{ steps.token.outputs.token }}
+  run: |
+    pip install pipenv
+    pipenv install --dev --ignore-pipfile
+```
+
+Example of pipenv config:
+```
+[[source]]
+name = "aws"
+url = "https://aws:${CODEARTIFACT_AUTH_TOKEN}@xxxxxx.d.codeartifact.us-east-1.amazonaws.com/pypi/xxxxx/simple/"
+verify_ssl = true
+
+[packages]
+your-package = { version = "~=1.0", index = "aws" }
+```
+
+Example of IAM Policies to grant access to the repositories available [here](https://docs.aws.amazon.com/codeartifact/latest/ug/auth-and-access-control-iam-identity-based-access-control.html)
