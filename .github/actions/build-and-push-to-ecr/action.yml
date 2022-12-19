@@ -32,6 +32,11 @@ inputs:
     default: "."
     required: false
     type: string
+  docker-no-cache:
+    description: disable docker cache
+    default: false
+    required: false
+    type: bool
   docker-build-args:
     description: "List of arguments used during docker build: ARG=VALUE"
     default: ""
@@ -74,3 +79,4 @@ runs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
         build-args: ${{ inputs.docker-build-args }}
+        no-cache: ${{ inputs.docker-no-cache }}
