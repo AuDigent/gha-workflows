@@ -72,5 +72,5 @@ runs:
         push: true
         tags: ${{ steps.login-ecr.outputs.registry }}/${{ inputs.ecr-repository-name }}:${{ inputs.docker-image-tag }}
         cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-to: type=gha
         build-args: ${{ inputs.docker-build-args }}
