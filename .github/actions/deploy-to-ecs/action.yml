@@ -56,7 +56,7 @@ runs:
 
         if [[ -z "${{ inputs.container-definitions-path }}" ]]
         then
-          TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition "${TASK_DEFINITION_ARN}" --output json | jq '.taskDefinition' | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+          TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition "${TASK_DEFINITION_ARN}" --output json | jq -c '(.taskDefinition.containerDefinitions[] | select(.name == "${{ inputs.container-name }}") | .image) |= "${{ inputs.docker-image }}"' | jq '.taskDefinition' | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
         else
           CONTAINER_DEFINITIONS=$( cat "${{ inputs.container-definitions-path }}" | jq -c '(.[] | select(.name == "${{ inputs.container-name }}") | .image) |= "${{ inputs.docker-image }}"')
           
