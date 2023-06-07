@@ -19,7 +19,7 @@ inputs:
     type: string
   container-definitions-path:
     description: path of the container definitions json file
-    default: .aws/container-definitions.json
+    default: ''
     type: string
   aws-access-key-id:
     description: AWS access key to login to ECR
@@ -52,26 +52,16 @@ runs:
       shell: bash
       run: |
         # Get the Task Definition ARN currently used by the ECS service
-        TASK_DEFINITION_ARN=$(aws ecs describe-services \
-          --cluster "${{ inputs.ecs-cluster }}" \
-          --services "${{ inputs.ecs-service }}" \
-          --output json \
-          | jq -r '.services[0].taskDefinition')
-        echo "::debug::${TASK_DEFINITION_ARN}"
-        
-        # Get the Container Definitions defined in your repo and update the image with the one pushed in ECR in the previous step
-        CONTAINER_DEFINITIONS=$( cat "${{ inputs.container-definitions-path }}" \
-          | jq -c '(.[] | select(.name == "${{ inputs.container-name }}") | .image) |= "${{ inputs.docker-image }}"')
-        echo "::debug::${CONTAINER_DEFINITIONS}"
+        TASK_DEFINITION_ARN=$(aws ecs describe-services --cluster "${{ inputs.ecs-cluster }}" --services "${{ inputs.ecs-service }}" --output json | jq -r '.services[0].taskDefinition')
 
-        # Get the full content of this Task Definition and update the container definitions
-        TASK_DEFINITION=$(aws ecs describe-task-definition \
-          --task-definition "${TASK_DEFINITION_ARN}" \
-          --output json \
-          | jq ".taskDefinition.containerDefinitions |= ${CONTAINER_DEFINITIONS}" \
-          | jq '.taskDefinition' \
-          | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
-        echo "::debug::${TASK_DEFINITION}"
+        if [[ -z "${{ inputs.container-definitions-path }}" ]]
+        then
+          TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition "${TASK_DEFINITION_ARN}" --output json | jq '.taskDefinition' | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+        else
+          CONTAINER_DEFINITIONS=$( cat "${{ inputs.container-definitions-path }}" | jq -c '(.[] | select(.name == "${{ inputs.container-name }}") | .image) |= "${{ inputs.docker-image }}"')
+          
+          TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition "${TASK_DEFINITION_ARN}" --output json | jq ".taskDefinition.containerDefinitions |= ${CONTAINER_DEFINITIONS}" | jq '.taskDefinition' | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+        fi
         
         echo "${TASK_DEFINITION}" > /tmp/task-definition.json
     - name: Deploy Amazon ECS task definition
