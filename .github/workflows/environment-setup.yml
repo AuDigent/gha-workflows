@@ -28,7 +28,15 @@ jobs:
         env:
           override: ${{ inputs.override }}
         run: |
-          environment=$([[ ${GITHUB_REF##*/} == "master" || ${GITHUB_REF##*/} == "main" ]] && echo "prod" || echo ${GITHUB_REF##*/})
-          environment=$(([[ $override != "" ]] && echo $override) || echo $environment)
-          echo "name=$environment" >> $GITHUB_OUTPUT
+          branch=${GITHUB_REF##*/}
+          if [[ $branch == ma* ]]; then
+            environment=prod
+          elif [[ $branch == stag* ]]; then
+            environment=stage
+          elif [[ $branch == dev* ]]; then
+            environment=dev
+          else
+            environment=$branch
+          fi
+          echo "name=$(([[ $override != "" ]] && echo $override) || echo $environment)" >> $GITHUB_OUTPUT
           echo "bump=$(([[ $environment == "prod" ]] && echo "minor") || echo "patch")" >> $GITHUB_OUTPUT
