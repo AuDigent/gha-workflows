@@ -38,4 +38,4 @@ jobs:
           cluster: ${{ inputs.owner }}-${{ inputs.environment }}
           service: ${{ inputs.owner }}-${{ inputs.service }}-${{ inputs.environment }}
         run: |
-          aws ecs update-service --cluster $cluster --service $service --desired-count 1 --force-new-deployment
+          aws ecs update-service --cluster $cluster --service $service --force-new-deployment
