@@ -36,7 +36,7 @@ jobs:
           elif [[ $branch == dev* ]]; then
             environment=dev
           else
-            environment=$branch
+            environment=dev
           fi
           echo "name=$(([[ $override != "" ]] && echo $override) || echo $environment)" >> $GITHUB_OUTPUT
           echo "bump=$(([[ $environment == "prod" ]] && echo "minor") || echo "patch")" >> $GITHUB_OUTPUT
